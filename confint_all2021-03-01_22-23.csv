@@ -1,0 +1,7 @@
+effect,low,median,high,n.obs,Group
+Primary,0.5,1,1,17,control
+Control,0,1,1,17,control
+Static,0,0,1,17,control
+Primary,2,3,3,8,treatment
+Control,1,3,3,8,treatment
+Static,0,1,1,8,treatment

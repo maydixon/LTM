@@ -1,0 +1,4 @@
+effect,low,median,high,n.obs
+Primary,0.5,1,1,17
+Control,0,1,1,17
+Static,0,0,1,17
