@@ -64,28 +64,67 @@ LTM1 <- LTM %>%
          values_drop_na = T #drop NA values
          ) %>%
      mutate(
+       Response_twitchplus = if_else(Response.score >=1, 1,0), #if response >= 1, put 1, if less, put 0 (make binary for if they at least twitched or not)
          Response_approachplus = if_else(Response.score >=2, 1,0), #if response >= 2, put 1, if less, put 0
         Response_attack =if_else(Response.score >=3, 1,0), #if response 3 put 1, otherwise 0
-    ) 
+    )  %>%
+     mutate(
+          Days.Between = replace(Days.Between, Days.Between == 0, NA) #For controls bats, "timebetween" should be NA, not 0
+
+     )
 
 
 
 
 
-# summarize the number of bats in each group, the # of bats with each ordinal response
+# summarize the number of bats in each group, the # of bats with each ordinal response 
+#.5 scores are possible bc we average the response of control bats to sound a and b.
 LTM_response <- LTM1  %>% group_by(Group, Playback) %>%
-      summarise( n=n() , n_0= sum(Response.score==0), n_1= sum(Response.score==1), n_2= sum(Response.score==2),n_2.5= sum(Response.score==2.5), n_3= sum(Response.score==3) ) 
+      summarise( n=n() , n_0= sum(Response.score==0),  n_0.5= sum(Response.score==0.5), n_1= sum(Response.score==1),n_1.5= sum(Response.score==1.5), n_2= sum(Response.score==2),n_2.5= sum(Response.score==2.5), n_3= sum(Response.score==3) ) 
 # %>%   pivot_wider(names_from = Playback, values_from= n) 
 LTM_response
 
 
 #summarize # bats that at least approached and those that attacked
 LTM_approach <- LTM1  %>% group_by(Group, Playback) %>%
-      summarise( n=n() , n_approachplus= sum(Response_approachplus ==1), n_attack = sum(Response_attack==1)) 
-
+      summarise( n=n() , n_noresp= sum(Response.score==0), n_twitchhplus= sum(Response_twitchplus ==1), n_approachplus= sum(Response_approachplus ==1), n_attack = sum(Response_attack==1)) 
+LTM_response
 LTM_approach
 #View(LTM_approach)
 
+
+```
+
+###Comparison: If we conservatively calculate "primary" as naive bat's highest score to either A or B, rather than their mean score, does that change the results? 
+
+```{r}
+# add a column where "primary" is calculated for naive bats by taking their highest response to A or B (rather than the mean response)?
+
+
+
+# pull only the control bats
+# pull A and B
+#take the higher rows for A and B
+# add back
+ LTM_test <- LTM1 %>% 
+  mutate(Playback.max = Playback) %>% #make new column
+  filter(Group %in% "control") %>% #pull control bats
+  filter( Playback %in% c("A", "B")) %>% #pull A and B
+  group_by(Bat.ID)  %>%
+    slice(which.max(Response.score)) %>%#pull out row with higher value
+ mutate(Playback.max = "Primary") #change name to primary from A or B
+ 
+ #now combine that with treatment bat primary responses
+ #not finished, still have to also select Control bat A and B
+#remove A and B from treatment, remove A and B and primary from controls
+ LTM_playbackmax <- LTM1 %>%
+  mutate(Playback.max = Playback) %>%
+ filter( !Playback %in% c("A", "B"))  %>% droplevels.data.frame() %>%
+  filter(Group == "treatment" | Group == "control" & Playback != "Primary") %>%  #keep all treatment values and remove control values with Primary
+   rbind(LTM_test) %>% #add back in the new computation for primary
+   select(-Playback) %>%
+   arrange(Group,Bat.ID, Playback.max)
+ 
 
 ```
 
@@ -96,7 +135,7 @@ LTM_approach
 
 
 First test strategy is a Cochran's test with a permutation approach. I'm using a packaged function, and one annoying thing is that they don't say how many permutations it runs. No way to change defaults. 
-```{r}
+```{r, eval = FALSE }
 ## 		blocks = bat ids, response = binary approach/ no approach, predictors = playback
 ## Cochran's test is like a Friedman test with binary data, and can be permuted. 
 		# This uses normal approximation, can use permutations approach (citation in link)
@@ -222,7 +261,7 @@ one more strategy, a home-grown permutation strategy
 # Gerry Carter
 
 # functions for bootstrapping 95% confidence intervals around the mean -----
-d<- LTM2 
+d <- LTM2 
 # get mean and 95% CI of values x via bootstrapping
 boot_ci <- function(x, perms=5000, bca=F) {
   get_mean <- function(x, d) {
@@ -317,8 +356,9 @@ LTM2 %>%
 ```{r}
 plot_preference <- function(OG_scores=T){
   
-  # alt method is to center  by response.score per bat to remove effect of some bats having higher scores in general than others. this doesn't necessarily make sense...
-  # other method is to use proportions to remove effect of total number of choices
+  # trying to make alt method where it calculates using the playback.max scale (test by checking means_control, should be 1 if using the playback max values)
+      #put plot2 within function- seems to work, the only off thing is that other values for control seem to change as well subtly. No changes to conclusions though
+
  # control/ naives
        if(OG_scores){
     points <- 
@@ -333,15 +373,14 @@ plot_preference <- function(OG_scores=T){
  
   }else{
     points <- 
-     d %>% 
+     LTM_playbackmax %>% 
       # get group
-      # filter(Group==group) %>% 
-      # center counts by bat
+      #filter(Group=="control") %>% 
       group_by(Bat.ID) %>% 
-      mutate(pref = Response.score - mean(Response.score)) %>% 
+      mutate(pref = Response.score) %>% 
       ungroup() %>% 
       # identify trial for bootstrapping
-      mutate(effect= Playback)  
+      mutate(effect= Playback.max)  
     
     
   }
@@ -362,7 +401,7 @@ plot_preference <- function(OG_scores=T){
     boot_ci2(y=.$pref, x=.$effect)
  
  means<- rbind(means_control, means_treatment) %>% mutate(Group =c(rep("control", 3), rep("treatment",3)))  #unlist()
- #means$groupp<- factor(means$groupp)
+ # means$groupp<- factor(means$groupp)
  
  # write_csv(means, paste0("confint_", "all", format(Sys.time(), "%Y-%m-%d_%H-%M"), ".csv") )
 
@@ -370,87 +409,227 @@ plot_preference <- function(OG_scores=T){
 
 
 # plot means, 95% CI and raw data
- ( plot1 <- 
-    means %>% 
-    ggplot(aes(x=effect, y=mean, color= Group))+
-    #facet_wrap(~Group, scales="free")+
-    geom_point(size=3, position = position_dodge(width = 0.9))+ #bootstrapped means
-    geom_errorbar(aes(ymin=low, ymax=high, width=.1), size=1, position = position_dodge(width = 0.9))+ #bootstrapped confidence intervals
-     
-    geom_point(data= points, aes(y= pref), size=1, alpha=0.5,  position =position_jitterdodge( jitter.width=0.1, jitter.height=0, dodge.width =0.9, seed=123) ) )# the raw data
-    #geom_point(stat='summary', fun.y=sum) +
-    # stat_summary(data= points, aes(x=effect, y= pref, group=Bat.ID), fun.y=sum, geom="line", position = position_jitterdodge( jitter.width=0.1, jitter.height=0.05, dodge.width =0.9, seed=1)) +
-   
- plot1 <- plot1 +
-   geom_line(data= points, aes(x=as.numeric(effect), y= pref, group=Bat.ID, color =Group), position = position_jitterdodge( jitter.width=0.1, jitter.height=0, dodge.width =0.9, seed=123)) + #can i dodge by Group but jitter by bat ID?
-   
-    # geom_hline(yintercept = ifelse(OG_scores, NA, 0), color= "dark grey")+
-     ylab("Response scores")+
-      xlab("")+
-    theme_cowplot()+
-     scale_y_continuous(labels= c("0" = "No response (0)", "1" = "Ear twitches (1)",
-                              "2" = "Approach (2)", "3"= "Attack (3)")) #+        
-    #scale_color_manual(values=c('#1b9e77','dark grey','#d95f02','#7570b3'))
  
-     
- # ggsave(paste0("plot_allgroups_", format(Sys.time(), "%Y-%m-%d_%H-%M")
- #              , ".pdf"))
- 
- 
- list(means,plot)
-}
-
-#group by treatment, connect lines by id
-#have a geom for each treatment? 
-
- 
-
-
-points = transform(points, deffect = ifelse(Group == "control", 
+ #dodges the minor points for plotting  
+  #deffect= playback (x) dodged by treatment
+  #jpref = pref (y) dodged by treatment
+  points = transform(points, deffect = ifelse(Group == "control", 
                                      as.numeric(effect) - .15,
                                      as.numeric(effect) + .15 ) )
  points = transform(points, deffect = ifelse(Group == "control", 
                                      jitter(as.numeric(effect) - .08, .1),
                                      jitter(as.numeric(effect) + .08, .1) ),
                jpref = jitter(pref, amount = 0) )
-#deffect= playback (x) dodged by treatment
- #jpref = pref (y) dodged by treatment
+
  
 # new try, shift points using craftiness. under x variable
  #left off here, trying foolishly to make lines into two palettes around the color of the points
  #mypal <- colorRampPalette(brewer.pal(17, "'dark grey'"))
 #mypal2 <- colorRampPalette(brewer.pal(17, "1b9e77"))
 
- plot2 <- 
+ (plot2 <- 
     means %>% 
     ggplot(aes(x=effect, y=mean, color= Group))+
     #facet_wrap(~Group, scales="free")+
+    geom_blank(data=points, aes(x=effect, y=pref)) +
     geom_point(size=3, position = position_dodge(width = 0.3))+ #bootstrapped means
+   # geom_line(data= points, aes(x=deffect, y= jpref, group= Bat.ID, color =Group),  alpha=0.2) +  #minor points individual bats
+   # geom_point( data = points, aes(x= deffect, y=jpref, group=Bat.ID), size=1, alpha=0.1 )  + #minor lines individual bats 
     geom_errorbar(aes(ymin=low, ymax=high, width=.1), size=1, position = position_dodge(width = 0.3))+ #bootstrapped confidence intervals +
         scale_color_manual(values=c('dark grey','#1b9e77','#d95f02','#7570b3'), labels= c("control" = "Naïve", "treatment" = "Experienced"), name = "Treatment") +
 
-     geom_blank(data=points, aes(x=effect, y=pref)) +
+    # geom_blank(data=points, aes(x=effect, y=pref)) +
     
-    geom_point( data = points, aes(x= deffect, y=jpref, group=Bat.ID), size=1, alpha=0.1 )  +
+   
     
-   geom_line(data= points, aes(x=deffect, y= jpref, group= Bat.ID, color =Group),  alpha=0.1) + 
+   
    scale_x_discrete(labels= c("Primary" = "Trained", "Control"= "Extinguished", "Static" ="Control" )) +
  
      ylab("Response scores")+
       xlab("")+
+   
     theme_cowplot(8)+
    
      scale_y_continuous(labels= c("0" = "No response (0)", "1" = "Ear twitches (1)",
                               "2" = "Approach (2)", "3"= "Attack (3)")) 
  
-  
+ )
  
+ 
+ list(means,plot2)
+ 
+}
+plot_preference(OG_scores = FALSE)
+plot_preference(OG_scores = TRUE)
 
- plot1
- plot2
- #ggsave("Responses_mean_bytreatment_linesbatID.jpg",width = 84,  height = 54, units= "mm" )
+plot2
+
+
+ 
+ #ggsave("Responses_mean_bytreatment_nolines.pdf", units = "mm",  height = 54, width = 84) # width = 84,, , units= "mm" )
+ #ggsave("Responses_mean_bytreatment_nolines.pdf", width = )
+```
+ 
+```{r}
+ #Feb 22, trying to figure out where "points" is made, seems to be in a function, unclear when it is called, why it won't update. Switching to d- precurser of "points" for this plot. points just has the bootstrapped estimates.
+
+ 
+   
+ plot3 <- 
+     d %>% 
+     ggplot(aes(x=Playback, y=Response.score, color= Group))+
+     facet_wrap(~ Days.Between + Bat.ID, 
+               # ncol = 4, # leave out to have default gridding
+                strip.position = "top") + #facet by time in wild (helps to order plots)
+     geom_point( position = position_dodge(width = 0.3))+ #bootstrapped means
+    # geom_errorbar(aes(ymin=low, ymax=high, width=.1), size=1, position = position_dodge(width = 0.3))+ #bootstrapped confidence intervals +
+         scale_color_manual(values=c('dark grey','#1b9e77','#d95f02','#7570b3'), labels= c("control" = "Naïve", "treatment" = "Experienced"), name = "Treatment") +
+  scale_y_continuous(labels= c("0" = "No response (0)", "1" = "Ear twitches (1)",
+                              "2" = "Approach (2)", "3"= "Attack (3)"), expand = expand_scale(add = .5) ) + #adds padding at top and bottom of y axis
+    # 
+    #  geom_blank(data=points, aes(x=effect, y=pref)) +
+    
+    #geom_point( data = points, aes(x= deffect, y=jpref, group=Bat.ID), size=1, alpha=0.1 )  +
+    
+   geom_line(data= d, aes(x=Playback, y= Response.score, group= Bat.ID, color =Group),  alpha=0.5) + 
+   scale_x_discrete(labels= c("Primary" = "T", "Control"= "E", "Static" ="C" )) +
+ 
+     ylab("Highest Response")+
+      xlab("")+
+   
+   geom_text(aes(label = Days.Between, x =  0.45, y = 0, vjust = 0.4, hjust = "left",),  show.legend = FALSE)+ 
+    #theme_cowplot(8)+
+     #theme_minimal() +
+   theme(
+    strip.text.x = element_blank() ,
+   # panel.grid = element_blank(), 
+    panel.border = element_rect(color ="black", fill = NA), #element_blank(),
+    #panel.grid.major.y = element_line(color = "black"),
+    #plot.background = element_blank(),
+    #axis.ticks.x = element_line(color = "black"),
+    
+    legend.position = "top" )   #legend on top
+   
+     
+ 
+plot3
+#ggsave("Responses_bybat_3.jpg", width= 6, height = 4) #6 x 4.5 looks okay
+
+
+
  
 ```
+
+Same as plot 3, but trying to see if it works to have A, B, E, and C
+```{r}
+ ## make dataframe with both A and B, and not Primary
+LTM_AB <- LTM1 %>% 
+  filter(Group %in% c("control", "treatment")) %>%
+  filter( !Playback %in% "Primary")  %>% droplevels.data.frame()
+ 
+   
+ plot4 <- 
+     LTM_AB %>% 
+     ggplot(aes(x=Playback, y=Response.score, color= Group))+
+     facet_wrap(~ Days.Between + Bat.ID, 
+               # ncol = 4, # leave out to have default gridding
+                strip.position = "top") + #facet by time in wild (helps to order plots)
+     geom_point( position = position_dodge(width = 0.3))+ #bootstrapped means
+    # geom_errorbar(aes(ymin=low, ymax=high, width=.1), size=1, position = position_dodge(width = 0.3))+ #bootstrapped confidence intervals +
+         scale_color_manual(values=c('dark grey','#1b9e77','#d95f02','#7570b3'), labels= c("control" = "Naïve", "treatment" = "Experienced"), name = "Treatment") +
+  scale_y_continuous(labels= c("0" = "No response (0)", "1" = "Ear twitches (1)",
+                              "2" = "Approach (2)", "3"= "Attack (3)"), expand = expand_scale(add = .5) ) + #adds padding at top and bottom of y axis
+    # 
+    #  geom_blank(data=points, aes(x=effect, y=pref)) +
+    
+    #geom_point( data = points, aes(x= deffect, y=jpref, group=Bat.ID), size=1, alpha=0.1 )  +
+    
+   geom_line(data= LTM_AB, aes(x=Playback, y= Response.score, group= Bat.ID, color =Group),  alpha=0.5) + 
+   scale_x_discrete(labels= c("A" = "A", "B" = "B", "Control"= "E", "Static" ="C" )) +
+ 
+     ylab("Highest Response")+
+      xlab("")+
+   
+   geom_text(aes(label = Days.Between, x =  0.45, y = 0, vjust = 0.4, hjust = "left",),  show.legend = FALSE)+ 
+    #theme_cowplot(8)+
+     #theme_minimal() +
+   theme(
+    strip.text.x = element_blank() ,
+   # panel.grid = element_blank(), 
+    panel.border = element_rect(color ="black", fill = NA), #element_blank(),
+    panel.grid.minor = element_blank(),
+    #plot.background = element_blank(),
+    #axis.ticks.x = element_line(color = "black"),
+    
+    legend.position = "top" )   #legend on top
+   
+     
+ 
+plot4
+#ggsave("ResponsesAB_bybat.jpg", width= 5, height = 4) #6 x 4.5 looks okay
+
+
+
+ 
+```
+```{r}
+ ## plot of all bats responses, faceted out, but as a barchart
+
+
+##  add small value to "0" bars for plotting (make 0's visible)
+LTM_plotting <- LTM_AB %>% mutate(Response.score, Plotting.scores = if_else(Response.score == "0", .1, Response.score ))
+   
+
+
+ plot5 <- 
+     LTM_plotting %>% 
+     ggplot(aes(x=Playback, y=Plotting.scores,  fill = Group))+
+     facet_wrap(~ Days.Between + Bat.ID, 
+               # ncol = 4, # leave out to have default gridding
+                strip.position = "top") + #facet by time in wild (helps to order plots)
+     geom_bar( position = position_dodge(width = 0.3), stat = "identity")+ #bootstrapped means
+    # geom_errorbar(aes(ymin=low, ymax=high, width=.1), size=1, position = position_dodge(width = 0.3))+ #bootstrapped confidence intervals +
+         scale_fill_manual(values=c('dark grey','#1b9e77','#d95f02','#7570b3'), labels= c("control" = "Naïve", "treatment" = "Experienced"), name = "Treatment") +
+  scale_y_continuous(labels= c("0" = "No response (0)", "1" = "Ear twitches (1)",
+                              "2" = "Approach (2)", "3"= "Attack (3)") ) +#, expand = expand_scale(add = .5) ) + #adds padding at top and bottom of y axis
+    # 
+    #  geom_blank(data=points, aes(x=effect, y=pref)) +
+    
+    #geom_point( data = points, aes(x= deffect, y=jpref, group=Bat.ID), size=1, alpha=0.1 )  +
+    
+   #geom_line(data= LTM_AB, aes(x=Playback, y= Plotting.scores, group= Bat.ID, color =Group),  alpha=0.5) + 
+   scale_x_discrete(labels= c("A" = "A", "B" = "B", "Control"= "E", "Static" ="C" )) +
+ 
+     ylab("Highest Response")+
+      xlab("")+
+   
+   #geom_text(aes(label = Days.Between, x =  0.45, y = 0, vjust = 0.4, hjust = "left",),  show.legend = FALSE)+ 
+    #theme_cowplot(8)+
+   #  theme_minimal() +
+   theme(
+    strip.text.x = element_blank() ,
+    #panel.grid = element_blank(), 
+    panel.border = element_rect(color ="black", fill = NA), 
+    #panel.grid.major.y = element_line(color = "gray"),
+    panel.grid.minor = element_blank(),
+    # plot.background = element_blank(),
+    axis.ticks.x = element_line(color = "black"),
+    axis.ticks.y = element_line(color = "black"),
+    panel.spacing = unit(10, "pt"),
+    legend.position = "top" )   #legend on top
+   
+     
+ 
+plot5
+#ggsave("ResponsesAB_bybat_barplot.jpg", width= 5, height = 4) #6 x 4.5 looks okay
+
+
+
+ 
+```
+
+
+
 
 
 # make function to plot data
@@ -528,11 +707,11 @@ plot_preference <- function(group= "control", OG_scores=T){
 }
 
 # get results----
-# use that function to plot preferences for AJ
+# use that function to plot preferences for naive bats
 # table shows summary data that is plotted
 (naive.results <- plot_preference(group="control", OG_scores = T))
 
-# use that function plot preferences for L
+# use that function plot preferences for treatment bats
 (experienced.results <- plot_preference(group="treatment", OG_scores = T))
 means
 
@@ -632,7 +811,7 @@ obs<- LTM2 %>%
 
 obs
 
-# get expected difference between species if bat choices were random across species 
+# get expected difference between treatment if bat choices were random across treatments 
 
 # how many permutations?
 perms <- 5000
@@ -640,8 +819,8 @@ perms <- 5000
 # store results in matrix
 exp <- matrix(NA, ncol=length(obs), nrow= perms) 
 
-#pull out distict names
-  namesgroup<- LTM2 %>%
+
+ namesgroup<- LTM2 %>%
     ungroup() %>%
     distinct(Bat.ID, .keep_all=T) %>%
     select(Bat.ID, Group)
@@ -662,33 +841,393 @@ exp <- matrix(NA, ncol=length(obs), nrow= perms)
   mutate(diff= treatment-control) %>% 
   arrange(Playback) %>% 
   pull(diff)
-  }
+  } 
   
 # get p-value for species difference for primary (column 1)
-hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
-
-# get p-value for species difference for control (column 2)
-hist_perm(exp= exp[,2], obs= obs[2], perms=perms)
-
+hist_perm(exp= exp[,1], obs= obs[1], perms=perms) 
+#ggsave("histogram_permutations_experienced_v_naive_trained.jpg")
+# get p-value for species difference for control/ extinguished (column 2)
+hist_perm(exp= exp[,2], obs= obs[2], perms=perms) 
+#ggsave("histogram_permutations_experienced_v_naive_extinguished.jpg")
 # get p-value for species difference for static (column 3)
 hist_perm(exp= exp[,3], obs= obs[3], perms=perms)
+#ggsave("histogram_permutations_experienced_v_naive_staticcontrol.jpg")
+
+###
+  ###
+ # p value for primary/ trained: 
+sum((exp[,1] >= obs[1])/perms) #one tailed #0
+sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed #0
+
+## p value for control/ extinguished
+sum((exp[,2] >= obs[2])/perms) #0
+sum((abs(exp[,2]) >= abs(obs[2]))/perms) #two-tailed #0
+ 
+ ## p value for static/ control
+ sum((exp[,1] >= obs[3])/perms) #0.107
+ sum((abs(exp[,3]) >= abs(obs[3]))/perms) #two-tailed 0.2144
+  
+```
+
+Difference between experienced bat response to Trained and extinguished? 
+```{r}
+# Did experienced bats respond differently to the different treatments?-----
+# use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
+
+
+# get difference between treatments in median response to each playback
+# store as vector of differences
+
+#only 1 group, relevant playbacks
+LTM3 <- LTM1 %>% 
+  filter(Group %in% c( "treatment")) %>%
+  filter( !Playback %in% c( "A","B"))  %>% droplevels.data.frame()
+  
+
+obs<- LTM3 %>% 
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diff= Primary-Static) %>% 
+  pull(diff)
+
+# number is difference for:
+# primary and static
+# positive number means primary had higher score
+# we cannot interpret these without the null model of what to expect by chance!
+
+
+obs
+
+# get expected difference between treatment if bat choices were random across treatments 
+
+# how many permutations?
+perms <- 5000
+
+# store results in matrix
+exp <- matrix(NA, ncol=length(obs), nrow= perms) 
+
+##stopped here, I want to pull out distinct bats, randomly reassign the playback, add them back
+# #pull out distinct names (changed Group to Playback)
+#   namesgroup<- LTM3 %>%
+#     ungroup() %>%
+#     distinct(Bat.ID, .keep_all=T) %>%
+#     select(Bat.ID, Group)
+  
+# for loop to get expected results
+  for (i in 1:perms){
+  
+  exp[i,] <- 
+    LTM3 %>% 
+    # re-assign visits to different cues within each trial 
+    group_by(Bat.ID) %>% 
+    mutate(Response.score = Response.score[sample(row_number())]) %>%  
+    
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diff= Primary-Static) %>% 
+  pull(diff)
+   #beep(12)  
+} 
+# get p-value for difference in experienced bat response between trained and static: 
+hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
+
+
 
 
 ###
   ###
- # p value for primary: 
+ # p value for difference in experienced bat response to trained and static: 
 sum((exp[,1] >= obs[1])/perms) #one tailed
 sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed
 
-## p value for extinguished
-sum((exp[,2] >= obs[2])/perms)
-sum((abs(exp[,2]) >= abs(obs[2]))/perms) #two-tailed
- 
- ## p value for static/ control
- sum((exp[,1] >= obs[3])/perms)
- sum((abs(exp[,3]) >= abs(obs[3]))/perms) #two-tailed
+#best to use two-tailed, bc would be interesting/ possible, if odd for control bats to have higher responses than experienced
+
   
 ```
+
+```{r}
+# Did experienced bats respond differently to the primary vs extinguished treatments?-----
+# use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
+
+
+# get difference between treatments in median response to each playback
+# store as vector of differences
+
+#only 1 group, relevant playbacks
+LTM3 <- LTM1 %>% 
+  filter(Group %in% c( "treatment")) %>%
+  filter( !Playback %in% c( "A","B"))  %>% droplevels.data.frame()
+  
+
+obs<- LTM3 %>% 
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diff= Primary-Control) %>% 
+  pull(diff)
+
+# number is difference for:
+# primary and static
+# positive number means primary had higher score
+# we cannot interpret these without the null model of what to expect by chance!
+
+
+obs
+
+# get expected difference between treatment if bat choices were random across treatments 
+
+# how many permutations?
+perms <- 5000
+
+# store results in matrix
+exp <- matrix(NA, ncol=length(obs), nrow= perms) 
+
+##stopped here, I want to pull out distinct bats, randomly reassign the playback, add them back
+# #pull out distinct names (changed Group to Playback)
+#   namesgroup<- LTM3 %>%
+#     ungroup() %>%
+#     distinct(Bat.ID, .keep_all=T) %>%
+#     select(Bat.ID, Group)
+  
+# for loop to get expected results
+  for (i in 1:perms){
+  
+  exp[i,] <- 
+    LTM3 %>% 
+    # re-assign visits to different cues within each trial 
+    group_by(Bat.ID) %>% 
+    mutate(Response.score = Response.score[sample(row_number())]) %>%  
+    
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diff= Primary-Control) %>% 
+  pull(diff)
+   #beep(12)  
+} 
+# get p-value for difference in experienced bat response between trained and static: 
+hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
+
+
+
+
+###
+  ###
+ # p value for difference in experienced bat response to trained and static: 
+sum((exp[,1] >= obs[1])/perms) #one tailed
+sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed
+
+#best to use two-tailed, bc would be interesting/ possible, if odd, for experienced bats to have higher responses to control than experienced
+
+  
+```
+Playing with trying to pull 2 things at the same time. Primary- Static and Primary- Control. Not finished
+
+```{r, eval = FALSE}
+# Did experienced bats respond differently to the different treatments?-----
+# use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
+#not working yet, pull doens't pull in right format. 
+
+# get difference between treatments in median response to each playback
+# store as vector of differences
+
+#only 1 group, relevant playbacks
+LTM3 <- LTM1 %>% 
+  filter(Group %in% c( "treatment")) %>%
+  filter( !Playback %in% c( "A","B"))  %>% droplevels.data.frame()
+  
+
+obs<- LTM3 %>% 
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diffPS= Primary-Static, diffPC = Primary-Control) %>% 
+  pull(diffPS,diffPC)
+
+# number is difference for:
+# primary and static
+# positive number means primary had higher score
+# we cannot interpret these without the null model of what to expect by chance!
+
+
+obs
+
+# get expected difference between treatment if bat choices were random across treatments 
+
+# how many permutations?
+perms <- 100
+
+# store results in matrix
+exp <- matrix(NA, ncol=length(obs), nrow= perms) 
+
+##stopped here, I want to pull out distinct bats, randomly reassign the playback, add them back
+# #pull out distinct names (changed Group to Playback)
+#   namesgroup<- LTM3 %>%
+#     ungroup() %>%
+#     distinct(Bat.ID, .keep_all=T) %>%
+#     select(Bat.ID, Group)
+  
+# for loop to get expected results
+  for (i in 1:perms){
+  
+  exp[i,] <- 
+    LTM3 %>% 
+    # re-assign visits to different cues within each trial 
+    group_by(Bat.ID) %>% 
+    mutate(Response.score = Response.score[sample(row_number())]) %>%  
+    
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diffPS= Primary-Static, diffPC = Primary-Control) %>% 
+  pull(diffPS, diffPC)
+   #beep(12)  
+} 
+# get p-value for difference in experienced bat response between trained and static: 
+hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
+
+hist_perm(exp= exp[,2], obs= obs[2], perms=perms)
+
+
+
+
+###
+  ###
+ # p value for difference in experienced bat response to trained and static: 
+sum((exp[,1] >= obs[1])/perms) #one tailed
+sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed
+
+#best to use two-tailed, bc would be interesting/ possible, if odd for control bats to have higher responses than experienced
+
+  
+```
+############################################################################################
+# Test, same stats, put with conservative value for naive bats response to primary/ trained
+
+##Summarize any differences between the two methods. Other values should be same, REsponse scores for naive primary should be slightly sifferent.
+```{r}
+
+
+#comparing naive trained responses with two methods side by side. 
+
+#pulling out Response.scores for controls to Primary with both methods
+LTM_compare <-LTM_playbackmax %>% 
+  filter(Group=="control", Playback.max =="Primary") %>% 
+  select(Response.score)%>% 
+  rename(Response.score.max = Response.score) %>% 
+  cbind(LTM2 %>% filter(Group=="control", Playback =="Primary") %>% 
+  select(Response.score) ) 
+LTM_compare
+
+#Summarize differences
+mean_compare <- LTM_compare %>%
+  summarize(mean.response.score.max = mean(Response.score.max), 
+            mean.response.score = mean(Response.score), 
+            difference = mean(Response.score.max-mean(Response.score)) )
+mean_compare
+#Difference in the two metrics is 0.205
+```
+
+
+```{r}
+# Are there Treatment differences?-----
+# use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
+
+
+# get difference between groups in median response to each playback
+# store as vector of differences
+
+#only 2 groups, relevant playbacks
+
+
+obs<- LTM_playbackmax %>% 
+  ungroup() %>%
+  group_by(Group, Playback.max) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Group, values_from= response) %>% 
+  mutate(diff= treatment-control) %>% 
+  arrange(Playback.max) %>% 
+  pull(diff)
+
+# numbers are T-C differences for:
+# primary control static
+# positive number means treatments had higher score
+# we cannot interpret these without the null model of what to expect by chance!
+
+
+obs
+
+# get expected difference between treatment if bat choices were random across treatments 
+
+# how many permutations?
+perms <- 5000
+
+# store results in matrix
+exp <- matrix(NA, ncol=length(obs), nrow= perms) 
+
+
+ namesgroup<- LTM_playbackmax %>%
+    ungroup() %>%
+    distinct(Bat.ID, .keep_all=T) %>%
+    select(Bat.ID, Group)
+  
+# for loop to get expected results
+  for(i in 1:perms) {
+ 
+ #pull out unique ids, randomly reassign group to them, add back 
+ Groupperm <- namesgroup %>% mutate(permgrp = sample(Group)) %>% select(Bat.ID, permgrp)
+  LTM_perm <- LTM_playbackmax %>% left_join(Groupperm)
+
+  # get same number as before, but with permuted group values
+  exp[i,] <- 
+    LTM_perm %>% 
+    group_by(permgrp, Playback.max) %>% 
+    summarize(response= mean(Response.score), .groups= 'drop') %>% #  # apparently drop is needed just bc new version of tidyverse gives a random warning, this prevents that  
+  pivot_wider(names_from = permgrp, values_from= response) %>% 
+  mutate(diff= treatment-control) %>% 
+  arrange(Playback.max) %>% 
+  pull(diff)
+  } 
+  
+# get p-value for species difference for primary (column 1)
+hist_perm(exp= exp[,1], obs= obs[1], perms=perms) 
+#ggsave("histogram_permutations_experienced_v_naive_trained.jpg")
+# get p-value for species difference for control/ extinguished (column 2)
+hist_perm(exp= exp[,2], obs= obs[2], perms=perms) 
+#ggsave("histogram_permutations_experienced_v_naive_extinguished.jpg")
+# get p-value for species difference for static (column 3)
+hist_perm(exp= exp[,3], obs= obs[3], perms=perms)
+#ggsave("histogram_permutations_experienced_v_naive_staticcontrol.jpg")
+
+###
+  ###
+ # p value for primary/ trained: 
+sum((exp[,1] >= obs[1])/perms) #one tailed #0
+sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed #0 # still the same result
+
+## p value for control/ extinguished
+sum((exp[,2] >= obs[2])/perms) #0
+sum((abs(exp[,2]) >= abs(obs[2]))/perms) #two-tailed #0
+ 
+ ## p value for static/ control
+ sum((exp[,1] >= obs[3])/perms) #0.107
+ sum((abs(exp[,3]) >= abs(obs[3]))/perms) #two-tailed 0.2144
+  
+```
+
+
+
+
+
+############################################################################################
 
 ## Timeline data isolated and basic timline for Experienced bats
 ```{r}
@@ -740,7 +1279,7 @@ timeline_heat<- timeline %>% pivot_longer(
 # print(timeline_heat)
 # dev.off()
 # 
-ggsave(paste0("time_responseplot",  format(Sys.time(), "%Y-%m-%d"), ".pdf"), width = 174,  height = 20, units= "mm")
+#ggsave(paste0("time_responseplot",  format(Sys.time(), "%Y-%m-%d"), ".pdf"), width = 174,  height = 20, units= "mm")
 #ggsave(paste0("time_responseplot",  format(Sys.time(), "%Y-%m-%d_%H-%M"), ".jpg"),width = 84,  height = 84, units= "mm")
 #ggsave(paste0("time_responseplot",  format(Sys.time(), "%Y-%m-%d_%H-%M"), ".eps"),width = 84,  height = 84, units= "mm")
 
