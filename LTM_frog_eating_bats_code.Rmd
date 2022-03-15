@@ -1,5 +1,5 @@
 ---
-title: "Long term memory in frog-eating bats code"
+title: "Long term memory in frog-eating bats"
 author: "M. May Dixon"
 date: "3/3/2022"
 output: html_document
@@ -24,17 +24,11 @@ random.experience = oddball bats, with various histories in various experiments.
 
 
 ## Install Packages
-
 ```{r}
-library(readxl)
 library(tidyverse)
-library(broom)
-library(ggplot2)
 library(tidyverse)
 library(boot)
-library(ggpubr)
 library(cowplot)
-library(RColorBrewer)
 library(lubridate)
 library(beepr)
 ```
@@ -77,7 +71,7 @@ LTM1 <- LTM %>%
 
 
 
-#only 2 groups, and categorize playbacks as Primary, control, static)
+# Only 2 groups, and categorize playbacks as Primary, control, static)
 LTM2 <- LTM1 %>% 
   filter(Group %in% c("control", "treatment")) %>%
   filter( !Playback %in% c( "A","B"))  %>% droplevels.data.frame()
@@ -90,7 +84,7 @@ LTM_AB <- LTM1 %>%
 ```
 
 
-##Explore data
+## Explore data
 ```{r}
 # summarize the number of bats in each group, the # of bats with each ordinal response
 
@@ -110,11 +104,12 @@ LTM_approach
 
 ```
 
-###Comparison: If we conservatively calculate "primary" as naive bat's highest score to either A or B, rather than their mean score, does that change the results? 
-Make dataset where response scores to Primary are calculated as the maximum response to A or B: 
+
+## Make dataset where response scores to Primary are calculated as the maximum response to A or B, rather than the mean: 
 ```{r}
 # add a column where "primary" is calculated for naive bats by taking their highest response to A or B (rather than the mean response)
 
+#Comparison: If we conservatively calculate "primary" as naive bat's highest score to either A or B, rather than their mean score, does that change the results? 
 
 
 # pull only the control bats
@@ -217,7 +212,7 @@ hist_perm <- function(exp=exp, obs=obs, perms=perms, label=''){
 ```
 
 
-#Bootstap bat responses by Bat ID, plot
+## Bootstap bat responses, plot
 ```{r}
 #Gerry code
 plot_preference <- function(OG_scores=T){
@@ -301,9 +296,6 @@ plot_preference <- function(OG_scores=T){
         scale_color_manual(values=c('dark grey','#1b9e77','#d95f02','#7570b3'), labels= c("control" = "Naïve", "treatment" = "Experienced"), name = "Treatment") +
 
     # geom_blank(data=points, aes(x=effect, y=pref)) +
-    
-   
-    
    
    scale_x_discrete(labels= c("Primary" = "Trained", "Control"= "Extinguished", "Static" ="Control" )) +
  
@@ -321,6 +313,7 @@ plot_preference <- function(OG_scores=T){
  list(means,plot2)
  
 }
+
 bootstrapped_OG <- plot_preference(OG_scores = TRUE)
 bootstrapped_primarymax <- plot_preference(OG_scores = FALSE)
 
@@ -389,16 +382,18 @@ plot5
  
 ```
 
-## Did control bats respond differently than treatment bats?
-###Permutation approach- use difference between means of groups.
+# Did naive bats respond differently than experienced bats?
+Permutation approach- use difference between means of groups.
+
+## Did experienced and naive bats respond differently to the different sounds?
 ```{r}
-# Are there Treatment differences?
+# Are there treatment differences?
 # use permutation test to compare experienced and naive bat responses to the three sound treatments (using null model that randomizes treatment group while controlling for everything else)
 
 
 # get difference between groups in mean response to each playback
 # store as vector of differences
-
+set.seed(122)
 
 obs<- LTM2 %>% 
   ungroup() %>%
@@ -470,12 +465,14 @@ sum((exp[,2] >= obs[2])/perms) #0
 sum((abs(exp[,2]) >= abs(obs[2]))/perms) #two-tailed #0
  
  ## p value for static/ control
- sum((exp[,1] >= obs[3])/perms) #0.107
- sum((abs(exp[,3]) >= abs(obs[3]))/perms) #two-tailed 0.2144
+ sum((exp[,1] >= obs[3])/perms) #1204
+ sum((abs(exp[,3]) >= abs(obs[3]))/perms) #two-tailed 0.2252
   
+ beep(5)
 ```
 
-Difference between experienced bat response to Trained and extinguished? 
+
+## Did experienced bats respond differently to the trained and control sounds? 
 ```{r}
 # Did experienced bats respond differently to primary/trained vs static/control treatments?
 # use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
@@ -538,7 +535,7 @@ exp <- matrix(NA, ncol=length(obs), nrow= perms)
   pull(diff)
    #beep(12)  
 } 
-# get p-value for difference in experienced bat response between trained and static: 
+# get p-value for difference in experienced bat response between primary/trained and control/static: 
 hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
 
 
@@ -546,15 +543,16 @@ hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
 
 ###
   ###
- # p value for difference in experienced bat response to trained and static: 
-sum((exp[,1] >= obs[1])/perms) #one tailed
-sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed
+ # p value for difference in experienced bat response to primary/trained and control/static: 
+sum((exp[,1] >= obs[1])/perms) #one tailed, 0
+sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed, 0
 
-#best to use two-tailed, bc would be interesting/ possible, if odd for control bats to have higher responses than experienced
+#best to use two-tailed, bc would be interesting/ possible if bats had higher responses to static
 ```
 
+## Did experienced bats respond differently to the extinguished and control sounds?
 ```{r}
-# Did experienced bats respond differently to the treatment vs extinguished treatments? 
+# Did experienced bats respond differently to the extinguished/control vs control/static treatments? 
 
 # use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
 
@@ -563,7 +561,88 @@ sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed
 # store as vector of differences
 
 #only 1 group, relevant playbacks
+LTM3 <- LTM1 %>% 
+  filter(Group %in% c( "treatment")) %>%
+  filter( !Playback %in% c( "A","B"))  %>% droplevels.data.frame()
+  
 
+obs<- LTM3 %>% 
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diff= Control-Static) %>% 
+  pull(diff)
+
+# number is difference for:
+# primary and static
+# positive number means primary had higher score
+# we cannot interpret these without the null model of what to expect by chance!
+
+
+obs
+
+# get expected difference between treatment if bat choices were random across treatments 
+
+# how many permutations?
+perms <- 5000
+
+# store results in matrix
+exp <- matrix(NA, ncol=length(obs), nrow= perms) 
+
+##stopped here, I want to pull out distinct bats, randomly reassign the playback, add them back
+# #pull out distinct names (changed Group to Playback)
+#   namesgroup<- LTM3 %>%
+#     ungroup() %>%
+#     distinct(Bat.ID, .keep_all=T) %>%
+#     select(Bat.ID, Group)
+  
+# for loop to get expected results
+  for (i in 1:perms){
+  
+  exp[i,] <- 
+    LTM3 %>% 
+    # re-assign visits to different cues within each trial 
+    group_by(Bat.ID) %>% 
+    mutate(Response.score = Response.score[sample(row_number())]) %>%  
+    
+  ungroup() %>%
+  group_by(Playback) %>% 
+  summarize(response= mean(Response.score)) %>% 
+  pivot_wider(names_from = Playback, values_from= response) %>% 
+  mutate(diff= Control-Static) %>% 
+  pull(diff)
+     
+} 
+# get p-value for difference in experienced bat response between extinguished and static: 
+hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
+
+
+
+
+###
+  ###
+ # p value for difference in experienced bat response to extinguished and static: 
+sum((exp[,1] >= obs[1])/perms) #one tailed 0
+sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed 0
+
+#best to use two-tailed, bc would be interesting/ possible
+
+  beep(3)
+```
+
+
+## Difference between trained and extinguished? 
+```{r}
+# Did experienced bats respond differently to the trained vs extinguished treatments?
+
+# use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
+
+
+# get difference between treatments in median response to each playback
+# store as vector of differences
+
+#only 1 group, relevant playbacks
 LTM3 <- LTM1 %>% 
   filter(Group %in% c( "treatment")) %>%
   filter( !Playback %in% c( "A","B"))  %>% droplevels.data.frame()
@@ -615,9 +694,9 @@ exp <- matrix(NA, ncol=length(obs), nrow= perms)
   pivot_wider(names_from = Playback, values_from= response) %>% 
   mutate(diff= Primary-Control) %>% 
   pull(diff)
-    
+   #beep(12)  
 } 
-# get p-value for difference in experienced bat response between trained and static: 
+# get p-value for difference in experienced bat response between trained and extinguished: 
 hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
 
 
@@ -625,19 +704,22 @@ hist_perm(exp= exp[,1], obs= obs[1], perms=perms)
 
 ###
   ###
- # p value for difference in experienced bat response to trained and static: 
+ # p value for difference in experienced bat response to trained and extinguished: 
 sum((exp[,1] >= obs[1])/perms) #one tailed
 sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed
 
-#best to use two-tailed, bc would be interesting/ possible, if odd, for experienced bats to have higher responses to static
+#best to use two-tailed, bc would be interesting/ possible
   
 ```
 
 
-# Test, same stats, put with conservative value for naive bats response to primary/ trained (playbackmax)
+# Test, same stats, but with conservative value for naive bats response to primary/ trained (playbackmax)
+See if calculating the response to the trained stimulus using the maximum response to A and B, rather than the mean, makes any difference to the results
 
-##Summarize any differences between the twoprimary calculation  methods. Other values should be same, ReEsponse scores for naive primary should be slightly different.
+## Summarize any differences between the two primary calculation  methods. Other values should be same, Response scores for naive primary should be slightly different.
 ```{r}
+
+beep(1)
 #comparing naive trained responses with two methods side by side. 
 
 #pulling out Response.scores for controls to Primary with both methods
@@ -658,13 +740,14 @@ mean_compare
 #Difference in the two metrics is 0.205
 ```
 
-## Permutation test with primarymax scale
+## Permutation test with primarymax scale 
+See if calculating the response to the trained stimulus using the maximum response to A and B, rather than the mean, makes any difference to the results
 ```{r}
-# Are there Treatment differences?-----
+# Are there Treatment differences?
 # use permutation test to compare treatments (using null model that randomizes treatment group while controlling for everything else)
 
 
-# get difference between groups in median response to each playback
+# get difference between groups in mean response to each playback
 # store as vector of differences
 
 #only 2 groups, relevant playbacks
@@ -684,7 +767,7 @@ obs<- LTM_playbackmax %>%
 # positive number means treatments had higher score
 # we cannot interpret these without the null model of what to expect by chance!
 
-
+set.seed(122)
 obs
 
 # get expected difference between treatment if bat choices were random across treatments 
@@ -719,7 +802,7 @@ exp <- matrix(NA, ncol=length(obs), nrow= perms)
   pull(diff)
   } 
   
-# get p-value for species difference for primary (column 1)
+# get p-value for species difference for primary/trained (column 1)
 hist_perm(exp= exp[,1], obs= obs[1], perms=perms) 
 #ggsave("histogram_permutations_experienced_v_naive_trained.jpg")
 # get p-value for species difference for control/ extinguished (column 2)
@@ -736,11 +819,11 @@ sum((exp[,1] >= obs[1])/perms) #one tailed #0
 sum((abs(exp[,1]) >= abs(obs[1]))/perms) #two-tailed #0 # still the same result
 
 ## p value for control/ extinguished
-sum((exp[,2] >= obs[2])/perms) #0
-sum((abs(exp[,2]) >= abs(obs[2]))/perms) #two-tailed #0
+sum((exp[,2] >= obs[2])/perms) #one tailed # 2e-4
+sum((abs(exp[,2]) >= abs(obs[2]))/perms) #two-tailed #2e-4
  
  ## p value for static/ control
- sum((exp[,1] >= obs[3])/perms) #0.107
- sum((abs(exp[,3]) >= abs(obs[3]))/perms) #two-tailed 0.2144
-  
+ sum((exp[,1] >= obs[3])/perms) #0.084
+ sum((abs(exp[,3]) >= abs(obs[3]))/perms) #two-tailed 0.2162
+  beep(8)
 ```
