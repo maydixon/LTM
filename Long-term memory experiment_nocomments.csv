@@ -1,51 +1,50 @@
-﻿Bat.ID,Group,Date.Tested,Date.First.Released,Days.Between,Response.to.A,Response.to.B,Response.to.Primary,Response.to.Control,Response.to.Static
-Seth ,control,3/12/13,NA,NA,1,1,1,1,0
-JaneGoodall,control,3/13/13,NA,NA,1,1,1,1,0
-TempleGrandin,control,3/13/13,NA,NA,0,0,0,1,0
-Jupiter,control,4/19/13,NA,NA,1,1,1,1,0
-Roux,control,3/25/13,NA,NA,1,1,1,1,0
-Jasper,control,4/1/13,NA,NA,1,1,1,0,0
-Louise,control,4/10/13,NA,NA,1,0,0.5,1,0
-Saturno,control,4/23/13,NA,NA,1,2,1.5,1,2
-Yanko,control,4/30/13,NA,NA,1,1,1,1,1
-Urano,control,5/6/13,NA,NA,1,1,1,2,2
-Neptuno,control,5/13/13,NA,NA,0,1,0.5,0,0
-Squirt,control,6/29/18,NA,NA,1,0,0.5,1,1
-Sundance Kid,control,7/12/18,NA,NA,0,1,0.5,0,0
-Paola,control,7/30/18,,NA,1,1,1,1,2
-Fiesty,control,7/13/18,,NA,1,1,1,0,0
-BigBertha,control.odd,7/23/18,,NA,1,1,1,1,0
-Jake,control,7/19/18,,NA,1,0,0.5,0,0
-Itchy,control,7/11/18,,NA,0,1,0.5,0,0
-Esperanza,control.partial,1/25/13,NA,NA,1,1,1,1,NA
-MrPeanut,control.partial,1/30/13,NA,NA,1,0,0.5,0,NA
-Grumpy ,control.partial,1/30/13,NA,NA,1,1,1,1,NA
-Sneezy,control.partial,1/30/13,NA,NA,1,1,1,1,NA
-Osvaldo,control.partial,2/6/13,NA,NA,0,0,0,1,NA
-Leslie,control.partial,2/10/13,NA,NA,1,1,1,1,NA
-Melanie,control.partial,2/10/13,NA,NA,1,1,1,1,NA
-Leia,control.partial,2/10/13,NA,NA,1,1,1,1,NA
-Fresca,control.partial,2/16/13,NA,NA,1,1,1,1,NA
-MarieCurie,control.partial,2/16/13,NA,NA,1,1,1,1,NA
-Archie,control.partial,2/26/13,NA,NA,1,1,1,0,NA
-Anansi,control.partial,2/28/13,NA,NA,1,1,1,1,NA
-MickyMan,control.partial,3/7/13,NA,NA,1,0,0.5,1,NA
-Diego,random.experience,2/3/16,10/15/14,476,3,,3,,3
-Fer,random.experience,2/2/16,7/19/15,198,,,,,
-Hubancheva,random.experience,2/3/16,9/2/14,154,3,1,,1,3
-Perro ,treatment,2/9/13,11/23/11,444,NA,3,3,3,1
-Ninja,treatment,2/16/13,2/26/12,356,3,NA,3,3,0
-Felipo,treatment,2/27/13,10/15/11,501,NA,3,3,3,3
-DrSeuss,treatment,3/1/13,11/8/11,479,3,NA,3,3,1
-Ant,treatment,6/13/13,2/22/11,818,3,NA,3,2,1
-Martin,treatment,6/29/13,7/11/11,719,NA,2,2,1,1
-CindyLouWho,treatment,2/1/16,11/23/11,1531,2,NA,2,1,1
-Firebrace,treatment,7/27/16,5/25/12,1524,3,NA,3,3,0
-Elden,treatment.short,4/20/13,2/21/13,58,NA,3,3,3,1
-Leia,treatment.short,4/20/13,2/17/13,62,NA,3,3,1,1
-Grumpy,treatment.short,4/28/13,2/3/13,84,NA,3,3,3,0
-Doc,treatment.short,2/24/14,5/5/13,295,NA,3,3,3,3
-Zebra,treatment.short,4/10/14,3/23/13,383,NA,0,1,3,0
-Esperanza ,treatment.short.odd,4/28/13,1/27/13,91,1,NA,1,1,1
-Micky Man,treatment.short,2/18/14,3/14/13,341,NA,3,3,3,3
-Zebra,treatment.short.odd,3/12/16,4/10/14,702,3,3,3,2,0
+﻿Bat.ID,Group,Sex,Date.Tested,Date.First.Released,Days.Between,Response.to.A,Response.to.B,Response.to.Primary,Response.to.Control,Response.to.Static
+Seth ,control,M,3/12/13,NA,NA,1,1,1,1,0
+JaneGoodall,control,F,3/13/13,NA,NA,1,1,1,1,0
+TempleGrandin,control,F,3/13/13,NA,NA,0,0,0,1,0
+Jupiter,control,M,4/19/13,NA,NA,1,1,1,1,0
+Roux,control,M,3/25/13,NA,NA,1,1,1,1,0
+Jasper,control,M,4/1/13,NA,NA,1,1,1,0,0
+Louise,control,M,4/10/13,NA,NA,1,0,0.5,1,0
+Saturno,control,M,4/23/13,NA,NA,1,2,1.5,1,2
+Yanko,control,M,4/30/13,NA,NA,1,1,1,1,1
+Urano,control,M,5/6/13,NA,NA,1,1,1,2,2
+Neptuno,control,M,5/13/13,NA,NA,0,1,0.5,0,0
+Squirt,control,F,6/29/18,NA,NA,1,0,0.5,1,1
+Sundance Kid,control,M,7/12/18,NA,NA,0,1,0.5,0,0
+Paola,control,F,7/30/18,NA,NA,1,1,1,1,2
+Fiesty,control,M,7/13/18,NA,NA,1,1,1,0,0
+BigBertha,control.odd,F,7/23/18,NA,NA,1,1,1,1,0
+Jake,control,M,7/19/18,NA,NA,1,0,0.5,0,0
+Itchy,control,M,7/11/18,NA,NA,0,1,0.5,0,0
+Esperanza,control.partial,F,1/25/13,NA,NA,1,1,1,1,NA
+MrPeanut,control.partial,M,1/30/13,NA,NA,1,0,0.5,0,NA
+Grumpy ,control.partial,M,1/30/13,NA,NA,1,1,1,1,NA
+Sneezy,control.partial,M,1/30/13,NA,NA,1,1,1,1,NA
+Osvaldo,control.partial,M,2/6/13,NA,NA,0,0,0,1,NA
+Leslie,control.partial,F,2/10/13,NA,NA,1,1,1,1,NA
+Melanie,control.partial,F,2/10/13,NA,NA,1,1,1,1,NA
+Leia,control.partial,F,2/10/13,NA,NA,1,1,1,1,NA
+Fresca,control.partial,F,2/16/13,NA,NA,1,1,1,1,NA
+MarieCurie,control.partial,F,2/16/13,NA,NA,1,1,1,1,NA
+Archie,control.partial,M,2/26/13,NA,NA,1,1,1,0,NA
+Anansi,control.partial,M,2/28/13,NA,NA,1,1,1,1,NA
+MickyMan,control.partial,M,3/7/13,NA,NA,1,0,0.5,1,NA
+Diego,random.experience,M,2/3/16,10/15/14,476,3,,3,,3
+Hubancheva,random.experience,F,2/3/16,9/2/14,519,3,1,2,1,3
+Perro ,treatment,M,2/9/13,11/23/11,444,NA,3,3,3,1
+Ninja,treatment,M,2/16/13,2/26/12,356,3,NA,3,3,0
+Felipo,treatment,M,2/27/13,10/15/11,501,NA,3,3,3,3
+DrSeuss,treatment,M,3/1/13,11/8/11,479,3,NA,3,3,1
+Ant,treatment,M,6/13/13,3/19/11,818,3,NA,3,2,1
+Martin,treatment,M,6/29/13,7/11/11,719,NA,2,2,1,1
+CindyLouWho,treatment,F,2/1/16,11/23/11,1531,2,NA,2,1,1
+Firebrace,treatment,M,7/27/16,5/25/12,1524,3,NA,3,3,0
+Elden,treatment.short,M,4/20/13,2/21/13,58,NA,3,3,3,1
+Leia,treatment.short,F,4/20/13,2/17/13,62,NA,3,3,1,1
+Grumpy,treatment.short,M,4/28/13,2/3/13,84,NA,3,3,3,0
+Doc,treatment.short,F,2/24/14,5/5/13,295,NA,3,3,3,3
+Zebra,treatment.short,M,4/10/14,3/23/13,383,NA,0,0,3,0
+Esperanza ,treatment.short.odd,F,4/28/13,1/27/13,91,1,NA,1,1,1
+Micky Man,treatment.short,M,2/18/14,3/14/13,341,NA,3,3,3,3
+Zebra,treatment.short.odd,M,3/12/16,4/10/14,702,3,3,3,2,0
